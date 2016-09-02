@@ -66,33 +66,6 @@ function istex_snu_block_info() {
   return $blocks;
 }
 
-
-/**
- * Custom function
- * Set beginning and end dates, 
- * and retrieve posts that were published between those dates
- *
- * @return published posts during the period
- */
-function istex_snu_retrieve_posts() {
-
-  $days_ago = 365*3;
-  $today = getdate();
-  
-  $start_time = mktime(0, 0, 0,$today['mon'],($today['mday'] - $days_ago), $today['year'] );
-  $end_time = time();
-
-  $query = db_select('node', 'n')
-    ->fields('n', array('nid', 'title', 'created'))
-    //->condition('status', 1)
-    ->condition('created', array($start_time, $end_time), 'BETWEEN')
-    ->orderBy('created', 'DESC') //Most recent first.
-    ->execute();
-
-  return $query; 
-
-}
-
 /**
  * Implements hook_block_view().
  */
@@ -121,8 +94,8 @@ function istex_snu_block_view($delta = ''){
         $angular = $baseModule."/bower_components/angular/angular.min.js";
         $rzslider = $baseModule."/slider/rzslider.js";
 
-          $istex_tag = '<istex-results></istex-results>';
-          $istex_conf = '<script>var istexConfig = {'.
+        $istex_tag = '<istex-results></istex-results>';
+        $istex_conf = '<script>var istexConfig = {'.
 
             "'proxyApi':'$proxyApi',".
             "'facetsToLoad': $facetsToLoad,".
@@ -133,7 +106,7 @@ function istex_snu_block_view($delta = ''){
             "'query':$query".
 
           "};</script><script src='$angular'></script><script src='$rzslider'></script><script src='$app'></script>";
-          $istex_css = "<script>[
+        $istex_css = "<script>[
               '".$baseModule."/bower_components/bootstrap/dist/css/bootstrap.min.css',
               '".$baseModule."/bower_components/bootstrap/dist/css/bootstrap-theme.min.css',
               '".$baseModule."/slider/rzslider.css',
@@ -145,9 +118,8 @@ function istex_snu_block_view($delta = ''){
               link.rel = 'stylesheet';
               document.head.appendChild(link);
           });</script>";
-          $block['content'] = $istex_tag.$istex_conf.$istex_css;
-        
-
+		  
+        $block['content'] = $istex_tag.$istex_conf.$istex_css;
         break;
       
       case 'istex_snu_facets':
