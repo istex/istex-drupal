@@ -1,0 +1,8 @@
+name = ISTEX-SNU
+description = Intègre les widgets ISTEX-SNU sur un site Drupal 7.x
+core = 7.x
+
+; CONFIGURATION PATH
+configure = admin/config/content/istex_snu
+;stylesheets[] = css/style.min.css
+; scripts[] = js/app.min.js

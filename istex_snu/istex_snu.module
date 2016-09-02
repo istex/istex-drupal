@@ -1,0 +1,272 @@
+<?php
+
+/*
+ * @file
+ * A module that defines the 3 blocks necesarry to implement the ISTEX widgets
+ */
+
+/**
+ * Custom function
+ * Creates a JSON array from a PHP array
+ *
+ * @return JSON array as a String
+ */
+function istex_snu_toJSONArray($phpArray){
+  $arrayJSON = "[";
+  foreach($phpArray as $val){
+    if($val){
+      $arrayJSON.="\"$val\",";
+    }
+  }
+  if($arrayJSON == "["){
+    $arrayJSON = false;
+  }else{
+    $arrayJSON = substr($arrayJSON, 0, -1)."]";
+  }
+
+  return $arrayJSON;
+}
+
+/**
+ * Implements hook_help().
+ */
+function istex_snu_help($path, $arg) {
+  switch($path) {
+    case "admin/help#istex_snu" :
+      $help = "<p>" . t("Pensez à activer les blocks correspondants aux widgets dont vous avez besoin : ").
+        "<ul>".
+          "<li>".t("Recherche (barre de recherche)")."</li>".
+          "<li>".t("Principale (zone où les résultats s'affichent)")."</li>".
+          "<li>".t("Facettes (filtres)")."</li>".
+        "</ul>".
+      "</p>".
+      "<p>" . t("Vous pouvez configurer les widgets ISTEX-SNU en cliquant sur le lien ci-dessous") . "</p>";
+      return $help;
+      break;
+  }
+}
+
+
+/**
+ * Implements hook_block_info().
+ */
+function istex_snu_block_info() {
+  $blocks['istex_snu_results'] = array(
+    // The name that will appear in the block list.
+    'info' => t('ISTEX-SNU results'),
+  );
+  $blocks['istex_snu_facets'] = array(
+    // The name that will appear in the block list.
+    'info' => t('ISTEX-SNU facets'),
+  );
+  $blocks['istex_snu_search'] = array(
+    // The name that will appear in the block list.
+    'info' => t('ISTEX-SNU search'),
+  );
+  return $blocks;
+}
+
+
+/**
+ * Custom function
+ * Set beginning and end dates, 
+ * and retrieve posts that were published between those dates
+ *
+ * @return published posts during the period
+ */
+function istex_snu_retrieve_posts() {
+
+  $days_ago = 365*3;
+  $today = getdate();
+  
+  $start_time = mktime(0, 0, 0,$today['mon'],($today['mday'] - $days_ago), $today['year'] );
+  $end_time = time();
+
+  $query = db_select('node', 'n')
+    ->fields('n', array('nid', 'title', 'created'))
+    //->condition('status', 1)
+    ->condition('created', array($start_time, $end_time), 'BETWEEN')
+    ->orderBy('created', 'DESC') //Most recent first.
+    ->execute();
+
+  return $query; 
+
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function istex_snu_block_view($delta = ''){
+  if(user_access('access content')) {
+    switch ($delta) {
+      case 'istex_snu_results':
+        $block['subject'] = "";
+
+        $proxyApi = variable_get('istex_snu_proxyApi');
+        $facetsToLoad = istex_snu_toJSONArray(variable_get('istex_snu_facetsToLoad'));
+        $advancedToLoad = (istex_snu_toJSONArray(variable_get('istex_snu_advancedToLoad'))==false ? "false" : "true");
+        $pagination = variable_get("istex_snu_pagination");
+        $showPaginationTop = ($pagination["showPaginationTop"]) 
+          ? 'true' 
+          : 'false';
+        $showPaginationBot = ($pagination["showPaginationBot"]) 
+          ? 'true' 
+          : 'false';
+        $pageSize = variable_get('istex_snu_pageSize');
+        $query = variable_get('istex_snu_defaultQuery');
+        $query = ($query !== "") ? "'".$query."'" : false; 
+
+        $baseModule = $GLOBALS['base_url']."/".drupal_get_path('module', 'istex_snu');
+        $app = $baseModule."/js/app.min.js";
+        $angular = $baseModule."/bower_components/angular/angular.min.js";
+        $rzslider = $baseModule."/slider/rzslider.js";
+
+          $istex_tag = '<istex-results></istex-results>';
+          $istex_conf = '<script>var istexConfig = {'.
+
+            "'proxyApi':'$proxyApi',".
+            "'facetsToLoad': $facetsToLoad,".
+            //"'advancedToLoad':$advancedToLoad,".
+            "'showPaginationTop':$showPaginationTop,".
+            "'showPaginationBot':$showPaginationBot,".
+            "'pageSize':$pageSize,".
+            "'query':$query".
+
+          "};</script><script src='$angular'></script><script src='$rzslider'></script><script src='$app'></script>";
+          $istex_css = "<script>[
+              '".$baseModule."/bower_components/bootstrap/dist/css/bootstrap.min.css',
+              '".$baseModule."/bower_components/bootstrap/dist/css/bootstrap-theme.min.css',
+              '".$baseModule."/slider/rzslider.css',
+              '".$baseModule."/css/style.min.css',
+              '".$baseModule."/css/istex_drupal.css'
+            ].forEach(function(href) {
+              var link = document.createElement('link');
+              link.href = href;
+              link.rel = 'stylesheet';
+              document.head.appendChild(link);
+          });</script>";
+          $block['content'] = $istex_tag.$istex_conf.$istex_css;
+        
+
+        break;
+      
+      case 'istex_snu_facets':
+        $block['subject'] = "";
+        $block['content'] = '<istex-facets></istex-facets>';
+        break;
+      
+      case 'istex_snu_search':
+        $block['subject'] = "";
+        $block['content'] = '<istex-search></istex-search>';
+        break;
+      
+      default:
+        $block['subject'] = "";
+        $block['content'] = "";
+        break;
+    }
+  }
+
+  return $block;
+  }
+
+/**
+ * Implements hook_menu().
+ */
+function istex_snu_menu(){
+  $items = array();
+
+  $items['admin/config/content/istex_snu'] = array(
+    'title' => 'Configurer les widgets Istex SNU',
+    'description' => 'Description pour Istex SNU',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('istex_snu_form'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+/*
+ * Page callback : Istex-SNU settings
+ *
+ * @see istex_snu_menu()
+ */
+function istex_snu_form($form, &$form_state){
+
+  $form['istex_snu_proxyApi'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Adresse du reverse proxy'),
+    '#default_value' => variable_get('istex_snu_proxyApi', 'https://api-istex-fr.bases-doc.univ-lorraine.fr'),
+    '#size' => 50,
+    '#maxlength' => 50,
+    '#descritpion' => t('Adresse du reverse Proxy utilisé \(EZProxy, ...\)'),
+    '#required' => TRUE,
+  );
+
+
+  $facets = array(
+    'corpusName'=>t('Corpus'),
+    'publicationDate'=>t('Date de Publication'),
+    'copyrightDate'=>t('Date de Copyright'),
+    'language'=>t('Langue'),
+    'wos'=>t('Catégorie WOS'),
+    'score'=>t('Score')
+  );
+  $form['istex_snu_facetsToLoad'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Facettes'),
+    '#options' => $facets,
+    '#descritpion' => t('Ensemble des facettes à utiliser'),
+    '#default_value' => variable_get('istex_snu_facetsToLoad', array('corpusName','publicationDate','copyrightDate','language','wos','score')),
+    '#required' => FALSE,
+  );
+
+  $advanced = array(
+    'showAdvanced'=>t('Afficher la recherche avancée')
+  );
+  $form['istex_snu_advancedToLoad'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Recherche Avancée'),
+    '#options' => $advanced,
+    '#descritpion' => t('Affiche ou non la recherche avancée'),
+    '#default_value' => variable_get('istex_snu_advancedToLoad', array('showAdvanced')),
+    '#required' => FALSE,
+  );
+
+  $pagination = array(
+    'showPaginationTop'=>t('Pagination en haut'),
+    'showPaginationBot'=>t('Pagination en bas')
+  );
+  $form['istex_snu_pagination'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Pagination'),
+    '#options' => $pagination,
+    '#descritpion' => t('Affiche ou non la pagination \(en haut et/ou en bas\)'),
+    '#default_value' => variable_get('istex_snu_pagination', array('showPaginationTop','showPaginationBot')),
+    '#required' => FALSE,
+  );
+
+  $form['istex_snu_pageSize'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Nombre de documents par page'),
+    '#default_value' => variable_get('istex_snu_pageSize', 10),
+    '#size' => 3,
+    '#maxlength' => 3,
+    '#descritpion' => t('Le nombre maximal de documents que les widgets vont afficher par page'),
+    '#required' => TRUE,
+  );
+
+  $form['istex_snu_defaultQuery'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Requête par défaut'),
+    '#default_value' => variable_get('istex_snu_defaultQuery', ''),
+    '#size' => 50,
+    '#maxlength' => 50,
+    '#descritpion' => t('Requête par défaut \(lance la recherche au chargement de la page\)'),
+    '#required' => FALSE,
+  );
+
+  return system_settings_form($form);
+}
