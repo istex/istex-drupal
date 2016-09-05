@@ -87,7 +87,7 @@ function istex_snu_block_view($delta = ''){
           : 'false';
         $pageSize = variable_get('istex_snu_pageSize');
         $query = variable_get('istex_snu_defaultQuery');
-        $query = ($query !== "") ? "'".$query."'" : false; 
+        $query = ($query !== "") ? "'".$query."'" : "false"; 
 
         $baseModule = $GLOBALS['base_url']."/".drupal_get_path('module', 'istex_snu');
         $app = $baseModule."/js/app.min.js";
