@@ -5,7 +5,7 @@ Le module utilise les widgets ISTEX-SNU disponibles [ici](https://github.com/ist
 
 ## Installation
 
-Téléchargez le fichier "istex-drupal-master.zip".  
+Téléchargez le fichier [istex-drupal-master.zip](https://github.com/istex/istex-drupal/archive/master.zip).  
 Dé-zippez le fichier et placez le dossier istex_snu dans l'espace où vous mettez généralement les modules dans votre arboressence.  
 Par exemple : /var/www/sites_drupal/sites/drupal.univ.fr/modules  
 Connéctez-vous en tant qu'Administrateur à votre site Drupal.  
